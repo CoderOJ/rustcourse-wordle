@@ -76,14 +76,13 @@ impl TestCase {
                 .join("main.wasm")
                 .display()
                 .to_string();
-            cmd.arg(result_wasm_path).env("NO_COLOR", "1");
+            cmd.arg(result_wasm_path).arg("--").env("NO_COLOR", "1");
             cmd
         } else {
             Command::new(EXE_PATH.as_os_str())
         };
         // command options for user program
         let mut command = command
-            .arg("--")
             .args(&self.arguments)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
