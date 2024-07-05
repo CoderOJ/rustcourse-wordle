@@ -1,36 +1,48 @@
-use {
-	console,
-	std::io::{self, Write},
+use wordle::{
+	builtin_words,
+	error::Error,
+	interactor::*,
+	plate::{word_eq, word_from_str, Plate, Word},
 };
 
-/// The main function for the Wordle game, implement your own logic here
 fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let is_tty = atty::is(atty::Stream::Stdout);
 
-	if is_tty {
-		println!(
-			"I am in a tty. Please print {}!",
-			console::style("colorful characters").bold().blink().blue()
-		);
+	let inter: Box<dyn Interactor> = if is_tty {
+		todo!();
 	} else {
-		println!("I am not in a tty. Please print according to test requirements!");
-	}
+		Box::new(Cmd::new())
+	};
 
-	if is_tty {
-		print!("{}", console::style("Your name: ").bold().red());
-		io::stdout().flush().unwrap();
-	}
-	let mut line = String::new();
-	io::stdin().read_line(&mut line)?;
-	println!("Welcome to wordle, {}!", line.trim());
+	let read_candidate = |list: &Vec<Word>| -> Result<Word, Error> {
+		let word = inter.read_word()?;
+		return if list.iter().any(|s| word_eq(&word, s)) {
+			Ok(word)
+		} else {
+			Err(Error::Unkown)
+		};
+	};
+	let list_final: Vec<Word> = builtin_words::FINAL
+		.iter()
+		.map(|&s| word_from_str(s).unwrap())
+		.collect();
+	let list_acceptalbe: Vec<Word> = builtin_words::ACCEPTABLE
+		.iter()
+		.map(|&s| word_from_str(s).unwrap())
+		.collect();
 
-	// example: print arguments
-	print!("Command line arguments: ");
-	for arg in std::env::args() {
-		print!("{} ", arg);
+	let mut plate = Plate::new(&read_candidate(&list_final)?);
+	while !plate.is_win() && plate.count() < 6 {
+		let word = loop {
+			match read_candidate(&list_acceptalbe) {
+				Ok(word) => break word,
+				Err(_) => println!("INVALID"),
+			}
+		};
+		plate.guess(&word);
+		inter.print_guess(&plate);
 	}
-	println!("");
-	// TODO: parse the arguments in `args`
+	inter.print_result(&plate);
 
-	Ok(())
+	return Ok(());
 }
