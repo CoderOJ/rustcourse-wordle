@@ -1,6 +1,6 @@
 use crate::{error::Error, util::LetterMap};
 
-type Letter = char;
+pub type Letter = char;
 #[derive(PartialEq, Eq, Clone, Copy)]
 pub enum LetterState {
 	Correct,
@@ -18,6 +18,10 @@ pub fn word_from_str(s: &str) -> Result<Word, Error> {
 		.collect::<Vec<char>>()
 		.try_into()
 		.map_err(|_| Error::Unkown)
+}
+
+pub fn word_to_str(s: &Word) -> String {
+	s.iter().collect()
 }
 
 pub fn word_eq(lhs: &Word, rhs: &Word) -> bool {

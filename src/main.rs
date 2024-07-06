@@ -9,7 +9,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let is_tty = atty::is(atty::Stream::Stdout);
 
 	let inter: Box<dyn Interactor> = if is_tty {
-		todo!();
+		Box::new(Tty::new())
 	} else {
 		Box::new(Cmd::new())
 	};

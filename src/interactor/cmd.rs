@@ -37,7 +37,7 @@ impl Interactor for Cmd {
 	}
 	fn print_result(&self, plate: &Plate) {
 		match plate.is_win() {
-			false => println!("FAILED {}", plate.goal().iter().collect::<String>()),
+			false => println!("FAILED {}", word_to_str(plate.goal())),
 			true => println!("CORRECT {}", plate.count()),
 		}
 	}

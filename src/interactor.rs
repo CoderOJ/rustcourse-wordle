@@ -1,7 +1,9 @@
 mod cmd;
+mod tty;
 use crate::{error::Error, plate::*};
 
 pub use cmd::Cmd;
+pub use tty::Tty;
 
 pub trait Interactor {
 	fn read_word(&self) -> Result<Word, Error> {
