@@ -4,6 +4,7 @@ use {
 };
 
 /// Specialized map for 26 letters
+#[derive(Clone, Copy)]
 pub struct LetterMap<T> {
 	_data: [T; 26],
 }
@@ -15,17 +16,6 @@ where
 	fn default() -> Self {
 		Self {
 			_data: arr![Default::default(); 26],
-		}
-	}
-}
-
-impl<T> Clone for LetterMap<T>
-where
-	T: Clone,
-{
-	fn clone(&self) -> Self {
-		Self {
-			_data: self._data.clone(),
 		}
 	}
 }
