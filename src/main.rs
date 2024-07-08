@@ -5,6 +5,7 @@ use {
 		error::Error,
 		interactor::*,
 		plate::{word_eq, word_from_str, Plate, Word},
+		util::loop_on_err_with,
 	},
 };
 
@@ -18,6 +19,10 @@ struct Args {
 	/// random mode, conflict to -s
 	#[arg(short, long, default_value_t = false)]
 	random: bool,
+
+	/// difficult mode
+	#[arg(short = 'D', long, default_value_t = false)]
+	difficult: bool,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -53,27 +58,32 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let list_acceptalbe: Vec<Word> = parse_list(builtin_words::ACCEPTABLE);
 	let mut read_acceptable = get_reader(&list_acceptalbe, &inter);
 
-	let mut plate = Plate::new(&{
-		match (args.word, args.random) {
-			(Some(_), true) => Err(Error::Unkown)?,
-			(Some(word_str), false) => word_from_str(word_str.as_str())?,
-			(None, true) => todo!(),
-			(None, false) => {
-				let list_final: Vec<Word> = parse_list(builtin_words::FINAL);
-				let mut read_final = get_reader(&list_final, &inter);
-				read_final()?
+	let mut plate = Plate::new(
+		&{
+			match (args.word, args.random) {
+				(Some(_), true) => Err(Error::Unkown)?,
+				(Some(word_str), false) => word_from_str(word_str.as_str())?,
+				(None, true) => todo!(),
+				(None, false) => {
+					let list_final: Vec<Word> = parse_list(builtin_words::FINAL);
+					let mut read_final = get_reader(&list_final, &inter);
+					read_final()?
+				}
 			}
-		}
-	});
+		},
+		args.difficult,
+	);
 
 	while !plate.is_win() && plate.count() < 6 {
-		let word = loop {
-			match read_acceptable() {
-				Ok(word) => break word,
-				Err(_) => println!("INVALID"),
-			}
-		};
-		plate.guess(&word);
+		loop_on_err_with(
+			|| {
+				plate.guess(&read_acceptable()?)?;
+				return Ok(());
+			},
+			|_: Error| {
+				println!("INVALID");
+			},
+		);
 		inter.print_guess(&plate);
 	}
 	inter.print_result(&plate);

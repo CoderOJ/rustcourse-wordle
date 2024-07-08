@@ -41,3 +41,15 @@ impl<T> LetterMap<T> {
 		&mut self._data
 	}
 }
+
+pub fn loop_on_err_with<T, E, F: FnMut() -> Result<T, E>, FE: FnMut(E) -> ()>(
+	mut f: F,
+	mut fe: FE,
+) -> T {
+	loop {
+		match f() {
+			Ok(r) => break r,
+			Err(e) => fe(e),
+		}
+	}
+}

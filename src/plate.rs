@@ -1,4 +1,7 @@
-use crate::{error::Error, util::LetterMap};
+use {
+	crate::{error::Error, util::LetterMap},
+	LetterState::*,
+};
 
 pub type Letter = char;
 #[derive(PartialEq, Eq, Clone, Copy)]
@@ -34,6 +37,7 @@ pub struct Plate {
 	keyboard:   LetterMap<LetterState>,
 	is_win:     bool,
 	history:    Vec<(Word, WordState)>,
+	difficult:  bool,
 }
 
 impl Default for LetterState {
@@ -44,7 +48,6 @@ impl Default for LetterState {
 
 impl LetterState {
 	fn or(lhs: LetterState, rhs: LetterState) -> LetterState {
-		use LetterState::*;
 		match (lhs, rhs) {
 			(Correct, _) => Correct,
 			(_, Correct) => Correct,
@@ -59,7 +62,7 @@ impl LetterState {
 
 impl Plate {
 	/// new Plate with candidate `word`
-	pub fn new(word: &Word) -> Plate {
+	pub fn new(word: &Word, difficult: bool) -> Plate {
 		let mut letter_cnt: LetterMap<u32> = Default::default();
 		for &c in word {
 			letter_cnt[c] += 1;
@@ -71,6 +74,7 @@ impl Plate {
 			keyboard: Default::default(),
 			is_win: false,
 			history: vec![],
+			difficult,
 		};
 	}
 
@@ -97,8 +101,41 @@ impl Plate {
 		&self.keyboard
 	}
 
-	pub fn guess(&mut self, word: &Word) {
-		use LetterState::*;
+	fn is_compatible(&self, word: &Word) -> Result<(), Error> {
+		for (prev_word, prev_state) in &self.history {
+			let mut word_cnt: LetterMap<u32> = Default::default();
+			for &c in word {
+				word_cnt[c] += 1;
+			}
+
+			// pass 1: check Correct
+			for i in 0..5usize {
+				if prev_state[i] == Correct {
+					if word[i] != prev_word[i] {
+						return Err(Error::Unkown);
+					}
+					word_cnt[word[i]] -= 1;
+				}
+			}
+
+			// pass 2: check Occur
+			for i in 0..5usize {
+				if prev_state[i] == Occured {
+					if word_cnt[prev_word[i]] == 0 {
+						return Err(Error::Unkown);
+					}
+					word_cnt[prev_word[i]] -= 1;
+				}
+			}
+		}
+
+		return Ok(());
+	}
+
+	pub fn guess(&mut self, word: &Word) -> Result<(), Error> {
+		if self.difficult {
+			self.is_compatible(word)?;
+		}
 
 		let mut word_state: WordState = Default::default();
 		let mut letter_cnt = self.letter_cnt.clone();
@@ -133,5 +170,6 @@ impl Plate {
 		}
 
 		self.history.push((word.clone(), word_state));
+		return Ok(());
 	}
 }
