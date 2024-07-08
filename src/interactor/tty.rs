@@ -1,6 +1,6 @@
 use {
 	super::Interactor,
-	crate::plate::*,
+	crate::{error::Error, plate::*},
 	console::{style, StyledObject},
 };
 
@@ -46,5 +46,8 @@ impl Interactor for Tty {
 			false => println!("{} {}", style("FAILED").red(), word_to_str(plate.goal())),
 			true => println!("{} {}", style("CORRECT").green(), plate.count()),
 		}
+	}
+	fn print_err(&self, e: Error) {
+		println!("{} {}", style("error:").red(), e);
 	}
 }

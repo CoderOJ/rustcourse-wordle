@@ -80,8 +80,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 				plate.guess(&read_acceptable()?)?;
 				return Ok(());
 			},
-			|_: Error| {
-				println!("INVALID");
+			|e: Error| {
+				inter.print_err(e);
 			},
 		);
 		inter.print_guess(&plate);

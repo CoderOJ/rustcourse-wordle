@@ -1,4 +1,7 @@
-use {super::Interactor, crate::plate::*};
+use {
+	super::Interactor,
+	crate::{error::Error, plate::*},
+};
 
 pub struct Cmd;
 
@@ -40,5 +43,8 @@ impl Interactor for Cmd {
 			false => println!("FAILED {}", word_to_str(plate.goal())),
 			true => println!("CORRECT {}", plate.count()),
 		}
+	}
+	fn print_err(&self, _: Error) {
+		println!("INVALID");
 	}
 }

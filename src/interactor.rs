@@ -15,4 +15,5 @@ pub trait Interactor {
 	}
 	fn print_guess(&self, _: &Plate);
 	fn print_result(&self, _: &Plate);
+	fn print_err(&self, _: Error);
 }
