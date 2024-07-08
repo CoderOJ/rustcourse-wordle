@@ -1,12 +1,28 @@
-use wordle::{
-	builtin_words,
-	error::Error,
-	interactor::*,
-	plate::{word_eq, word_from_str, Plate, Word},
+use {
+	clap::Parser,
+	wordle::{
+		builtin_words,
+		error::Error,
+		interactor::*,
+		plate::{word_eq, word_from_str, Plate, Word},
+	},
 };
+
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct Args {
+	/// select answer mode, conflict to -r
+	#[arg(short, long)]
+	word: Option<String>,
+
+	/// random mode, conflict to -s
+	#[arg(short, long, default_value_t = false)]
+	random: bool,
+}
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let is_tty = atty::is(atty::Stream::Stdout);
+	let args = Args::parse();
 
 	let inter: Box<dyn Interactor> = if is_tty {
 		Box::new(Tty::new())
@@ -34,12 +50,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 	// rust does not automaticly extend lifetime like cpp does to a rebinded xvalue
 	// so it is required to explicitly bind it to `list_final`, which has a explicit lifetime
 	let parse_list = |list: &[&str]| list.iter().map(|&s| word_from_str(s).unwrap()).collect();
-	let list_final: Vec<Word> = parse_list(builtin_words::FINAL);
 	let list_acceptalbe: Vec<Word> = parse_list(builtin_words::ACCEPTABLE);
-	let mut read_final = get_reader(&list_final, &inter);
 	let mut read_acceptable = get_reader(&list_acceptalbe, &inter);
 
-	let mut plate = Plate::new(&read_final()?);
+	let mut plate = Plate::new(&{
+		match (args.word, args.random) {
+			(Some(_), true) => Err(Error::Unkown)?,
+			(Some(word_str), false) => word_from_str(word_str.as_str())?,
+			(None, true) => todo!(),
+			(None, false) => {
+				let list_final: Vec<Word> = parse_list(builtin_words::FINAL);
+				let mut read_final = get_reader(&list_final, &inter);
+				read_final()?
+			}
+		}
+	});
+
 	while !plate.is_win() && plate.count() < 6 {
 		let word = loop {
 			match read_acceptable() {
