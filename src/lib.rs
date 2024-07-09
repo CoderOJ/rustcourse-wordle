@@ -1,3 +1,4 @@
+pub mod config;
 pub mod builtin_words;
 pub mod error;
 pub mod interactor;

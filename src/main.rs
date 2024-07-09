@@ -1,46 +1,58 @@
-use {
-	clap::Parser,
-	wordle::{
-		builtin_words,
-		error::Error,
-		interactor::*,
-		plate::{word_eq, word_from_str, Plate, Word},
-		util::loop_on_err_with,
-	},
+use wordle::{
+	config::{self, WordSrc},
+	error::Error,
+	interactor::*,
+	plate::*,
+	util::loop_on_err_with,
 };
 
-#[derive(Parser, Debug)]
-#[command(version, about, long_about = None)]
-struct Args {
-	/// select answer mode, conflict to -r
-	#[arg(short, long)]
-	word: Option<String>,
+struct RepeatReader<'a, F: FnMut() -> Result<Word, Error>> {
+	first_time: bool,
+	reader:     &'a mut F,
+}
 
-	/// random mode, conflict to -s
-	#[arg(short, long, default_value_t = false)]
-	random: bool,
+impl<'a, F: FnMut() -> Result<Word, Error>> RepeatReader<'a, F> {
+	fn new(reader: &'a mut F) -> Self {
+		Self {
+			first_time: true,
+			reader,
+		}
+	}
+}
 
-	/// difficult mode
-	#[arg(short = 'D', long, default_value_t = false)]
-	difficult: bool,
+impl<'a, F: FnMut() -> Result<Word, Error>> Iterator for RepeatReader<'a, F> {
+	type Item = Word;
+	fn next(&mut self) -> Option<Self::Item> {
+		let is_next = match self.first_time {
+			true => {
+				self.first_time = false;
+				true
+			}
+			false => {
+				let mut s = String::new();
+				std::io::stdin().read_line(&mut s).ok()?;
+				s == "Y"
+			}
+		};
+		return match is_next {
+			true => Some((self.reader)().ok()?),
+			false => None,
+		};
+	}
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let is_tty = atty::is(atty::Stream::Stdout);
-	let args = Args::parse();
+	let config = config::config()?;
 
-	let inter: Box<dyn Interactor> = if is_tty {
-		Box::new(Tty::new())
-	} else {
-		Box::new(Cmd::new())
-	};
+	let inter: &dyn Interactor = if is_tty { &Tty::new() } else { &Cmd::new() };
 
 	// `inter` must be passed because
 	// 1. functions can not capture it
 	// 2. specific lifetime for closures is still experimental
-	fn get_reader<'a>(
+	fn reader_from_list<'a>(
 		list: &'a Vec<Word>,
-		inter: &'a Box<dyn Interactor>,
+		inter: &'a dyn Interactor,
 	) -> impl 'a + FnMut() -> Result<Word, Error> {
 		|| {
 			let word = inter.read_word()?;
@@ -51,42 +63,31 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 			};
 		}
 	}
+	let mut read_acceptable = reader_from_list(&config.list_acceptable, inter);
+	let mut read_final = reader_from_list(&config.list_final, inter);
 
-	// rust does not automaticly extend lifetime like cpp does to a rebinded xvalue
-	// so it is required to explicitly bind it to `list_final`, which has a explicit lifetime
-	let parse_list = |list: &[&str]| list.iter().map(|&s| word_from_str(s).unwrap()).collect();
-	let list_acceptalbe: Vec<Word> = parse_list(builtin_words::ACCEPTABLE);
-	let mut read_acceptable = get_reader(&list_acceptalbe, &inter);
+	let word_generator: &mut dyn Iterator<Item = Word> = match config.word_src {
+		WordSrc::Select(word) => &mut std::iter::repeat(word).take(1),
+		WordSrc::Ask => &mut RepeatReader::new(&mut read_final),
+		WordSrc::Random(seed, date) => todo!(),
+	};
 
-	let mut plate = Plate::new(
-		&{
-			match (args.word, args.random) {
-				(Some(_), true) => Err(Error::Unkown)?,
-				(Some(word_str), false) => word_from_str(word_str.as_str())?,
-				(None, true) => todo!(),
-				(None, false) => {
-					let list_final: Vec<Word> = parse_list(builtin_words::FINAL);
-					let mut read_final = get_reader(&list_final, &inter);
-					read_final()?
-				}
-			}
-		},
-		args.difficult,
-	);
-
-	while !plate.is_win() && plate.count() < 6 {
-		loop_on_err_with(
-			|| {
-				plate.guess(&read_acceptable()?)?;
-				return Ok(());
-			},
-			|e: Error| {
-				inter.print_err(e);
-			},
-		);
-		inter.print_guess(&plate);
+	while let Some(word) = word_generator.next() {
+		let mut plate = Plate::new(&word, config.difficult);
+		while !plate.is_win() && plate.count() < 6 {
+			loop_on_err_with(
+				|| {
+					plate.guess(&read_acceptable()?)?;
+					return Ok(());
+				},
+				|e: Error| {
+					inter.print_err(e);
+				},
+			);
+			inter.print_guess(&plate);
+		}
+		inter.print_result(&plate);
 	}
-	inter.print_result(&plate);
 
 	return Ok(());
 }
