@@ -1,6 +1,6 @@
 use {
 	super::Interactor,
-	crate::{error::Error, plate::*},
+	crate::{error::Error, plate::*, statistic::*},
 	console::{style, StyledObject},
 };
 
@@ -46,6 +46,22 @@ impl Interactor for Tty {
 			false => println!("{} {}", style("FAILED").red(), word_to_str(plate.goal())),
 			true => println!("{} {}", style("CORRECT").green(), plate.count()),
 		}
+	}
+	fn print_statistic(&self, s: &Statistic) {
+		println!("Statistic:");
+		println!(
+			"success: {} fail: {} average attempts: {:.2}",
+			s.success_cnt(),
+			s.fail_cnt(),
+			s.success_attempt_average()
+		);
+		println!(
+			"Top words: {}",
+			s.top5_words()
+				.map(|x| format!("{}*{}", x.str, x.cnt))
+				.collect::<Vec<String>>()
+				.join(" ")
+		);
 	}
 	fn print_err(&self, e: Error) {
 		println!("{} {}", style("error:").red(), e);

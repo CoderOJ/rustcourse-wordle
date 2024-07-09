@@ -35,6 +35,10 @@ struct Args {
 	/// difficult mode
 	#[arg(short = 'D', long, default_value_t = false)]
 	difficult: bool,
+
+	/// print statistic
+	#[arg(short = 't', long, default_value_t = false)]
+	stats: bool,
 }
 
 pub enum WordSrc {
@@ -48,6 +52,7 @@ pub enum WordSrc {
 
 pub struct Config {
 	pub difficult:       bool,
+	pub stats:           bool,
 	pub word_src:        WordSrc,
 	pub list_acceptable: Vec<Word>,
 	pub list_final:      Vec<Word>,
@@ -69,6 +74,7 @@ pub fn config() -> Result<Config, Error> {
 
 	return Ok(Config {
 		difficult: args.difficult,
+		stats: args.stats,
 		word_src,
 		list_acceptable,
 		list_final,

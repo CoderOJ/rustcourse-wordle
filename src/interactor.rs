@@ -1,9 +1,8 @@
+use crate::{error::Error, plate::*, statistic::Statistic};
+
 mod cmd;
 mod tty;
-use crate::{error::Error, plate::*};
-
-pub use cmd::Cmd;
-pub use tty::Tty;
+pub use {cmd::Cmd, tty::Tty};
 
 pub trait Interactor {
 	fn read_word(&self) -> Result<Word, Error> {
@@ -15,5 +14,6 @@ pub trait Interactor {
 	}
 	fn print_guess(&self, _: &Plate);
 	fn print_result(&self, _: &Plate);
+	fn print_statistic(&self, _: &Statistic);
 	fn print_err(&self, _: Error);
 }

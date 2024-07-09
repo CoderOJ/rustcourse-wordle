@@ -3,6 +3,7 @@ use wordle::{
 	error::Error,
 	interactor::*,
 	plate::*,
+	statistic::Statistic,
 	util::loop_on_err_with,
 };
 
@@ -31,7 +32,7 @@ impl<'a, F: FnMut() -> Result<Word, Error>> Iterator for RepeatReader<'a, F> {
 			false => {
 				let mut s = String::new();
 				std::io::stdin().read_line(&mut s).ok()?;
-				s == "Y"
+				s == "Y\n"
 			}
 		};
 		return match is_next {
@@ -71,6 +72,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 		WordSrc::Ask => &mut RepeatReader::new(&mut read_final),
 		WordSrc::Random(seed, date) => todo!(),
 	};
+	let mut statistic = Statistic::new();
 
 	while let Some(word) = word_generator.next() {
 		let mut plate = Plate::new(&word, config.difficult);
@@ -86,7 +88,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 			);
 			inter.print_guess(&plate);
 		}
+		statistic.add_plate(&plate);
 		inter.print_result(&plate);
+		if config.stats {
+			inter.print_statistic(&statistic);
+		}
 	}
 
 	return Ok(());

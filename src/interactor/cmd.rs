@@ -1,6 +1,6 @@
 use {
 	super::Interactor,
-	crate::{error::Error, plate::*},
+	crate::{error::Error, plate::*, statistic::*},
 };
 
 pub struct Cmd;
@@ -43,6 +43,21 @@ impl Interactor for Cmd {
 			false => println!("FAILED {}", word_to_str(plate.goal())),
 			true => println!("CORRECT {}", plate.count()),
 		}
+	}
+	fn print_statistic(&self, s: &Statistic) {
+		println!(
+			"{} {} {:.2}",
+			s.success_cnt(),
+			s.fail_cnt(),
+			s.success_attempt_average()
+		);
+		println!(
+			"{}",
+			s.top5_words()
+				.map(|x| format!("{} {}", x.str, x.cnt))
+				.collect::<Vec<String>>()
+				.join(" ")
+		);
 	}
 	fn print_err(&self, _: Error) {
 		println!("INVALID");
