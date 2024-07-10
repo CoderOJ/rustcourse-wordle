@@ -1,6 +1,12 @@
 use {
 	crate::plate::*,
-	std::collections::{BTreeMap, BTreeSet},
+	anyhow::Result,
+	serde::{Deserialize, Serialize},
+	serde_json::{from_str, to_string},
+	std::{
+		collections::{BTreeMap, BTreeSet},
+		path::Path,
+	},
 };
 
 #[derive(PartialEq, Eq)]
@@ -19,6 +25,19 @@ impl Ord for WordCnt {
 	}
 }
 
+#[derive(Clone, Serialize, Deserialize)]
+struct StatisticGame {
+	answer:  String,
+	guesses: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct StatisticJSON {
+	total_rounds: Option<u64>,
+	games:        Option<Vec<StatisticGame>>,
+}
+
+#[derive(Default)]
 pub struct Statistic {
 	success_cnt:        u64,
 	fail_cnt:           u64,
@@ -26,17 +45,45 @@ pub struct Statistic {
 
 	word_cnt:  BTreeMap<String, u64>,
 	top_words: BTreeSet<WordCnt>,
+	games:     Vec<StatisticGame>,
 }
 
 impl Statistic {
-	pub fn new() -> Statistic {
-		Statistic {
+	pub fn new() -> Self {
+		Self {
 			success_cnt:        0,
 			fail_cnt:           0,
 			success_attemp_cnt: 0,
 			word_cnt:           Default::default(),
 			top_words:          Default::default(),
+			games:              Default::default(),
 		}
+	}
+	pub fn load(path: &Path) -> Result<Self> {
+		if !path.exists() {
+			return Ok(Self::new());
+		}
+		let state: StatisticJSON = from_str(&std::fs::read_to_string(path)?)?;
+		return match state.games {
+			None => Ok(Default::default()),
+			Some(games) => {
+				let mut result: Statistic = Default::default();
+				for game in games {
+					result._add_plate(game.answer, game.guesses);
+				}
+				return Ok(result);
+			}
+		};
+	}
+	pub fn store(&self, path: &Path) -> Result<()> {
+		std::fs::write(
+			path,
+			&to_string(&StatisticJSON {
+				total_rounds: Some(self.success_cnt + self.fail_cnt),
+				games:        Some(self.games.clone()),
+			})?,
+		)?;
+		return Ok(());
 	}
 
 	pub fn success_cnt(&self) -> u64 {
@@ -52,13 +99,12 @@ impl Statistic {
 		}
 	}
 
-	fn add_word(&mut self, word: &Word) {
-		let word_str = word_to_str(word);
-		match self.word_cnt.get_mut(&word_str) {
+	fn add_word(&mut self, word: &String) {
+		match self.word_cnt.get_mut(word) {
 			None => {
-				self.word_cnt.insert(word_str.clone(), 1);
+				self.word_cnt.insert(word.clone(), 1);
 				self.top_words.insert(WordCnt {
-					str: word_str,
+					str: word.clone(),
 					cnt: 1,
 				});
 			}
@@ -67,7 +113,7 @@ impl Statistic {
 				let wc = self
 					.top_words
 					.take(&WordCnt {
-						str: word_str,
+						str: word.clone(),
 						cnt: *c,
 					})
 					.unwrap();
@@ -80,19 +126,34 @@ impl Statistic {
 		}
 	}
 
-	pub fn add_plate(&mut self, plate: &Plate) {
-		match plate.is_win() {
+	fn _add_plate(&mut self, goal: String, history: Vec<String>) {
+		// is_win?
+		match goal == *history.last().unwrap() {
 			true => {
 				self.success_cnt += 1;
-				self.success_attemp_cnt += plate.history().len() as u64;
+				self.success_attemp_cnt += history.len() as u64;
 			}
 			false => {
 				self.fail_cnt += 1;
 			}
 		};
-		for (word, _) in plate.history() {
+		for word in &history {
 			self.add_word(word);
 		}
+		self.games.push(StatisticGame {
+			answer:  goal,
+			guesses: history,
+		});
+	}
+	pub fn add_plate(&mut self, plate: &Plate) {
+		self._add_plate(
+			word_to_str(plate.goal()),
+			plate
+				.history()
+				.iter()
+				.map(|(w, _)| word_to_str(w))
+				.collect(),
+		)
 	}
 
 	pub fn top5_words(&self) -> impl Iterator<Item = &WordCnt> {

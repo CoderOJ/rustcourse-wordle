@@ -57,6 +57,10 @@ struct Args {
 		value_name = "ACCEPTABLE_SET_FILE"
 	)]
 	acceptable_set_src: Option<String>,
+
+	/// state json file
+	#[arg(short = 'S', long = "state", value_name = "STATE_FILE")]
+	state_src: Option<String>,
 }
 
 pub enum WordSrc {
@@ -75,6 +79,7 @@ pub struct Config {
 	pub set_acceptable: HashSet<Word>,
 	pub set_final:      HashSet<Word>,
 	pub list_final:     Vec<Word>,
+	pub state_src:      Option<String>,
 }
 
 pub fn config() -> Result<Config> {
@@ -115,5 +120,6 @@ pub fn config() -> Result<Config> {
 		set_acceptable,
 		set_final: list_final.iter().cloned().collect(),
 		list_final,
+		state_src: args.state_src,
 	});
 }

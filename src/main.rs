@@ -81,7 +81,10 @@ fn main() -> Result<()> {
 			&mut RepeatReader::new(rand_words(&config.list_final, seed, date))
 		}
 	};
-	let mut statistic = Statistic::new();
+	let mut statistic = match &config.state_src {
+		None => Statistic::new(),
+		Some(src) => Statistic::load(&std::path::Path::new(src))?,
+	};
 	let mut read_acceptable = reader_from_set(&config.set_acceptable, inter);
 
 	while let Some(word) = word_generator.next() {
@@ -102,6 +105,9 @@ fn main() -> Result<()> {
 		inter.print_result(&plate);
 		if config.stats {
 			inter.print_statistic(&statistic);
+		}
+		if let Some(path) = &config.state_src {
+			statistic.store(&std::path::Path::new(path))?;
 		}
 	}
 
