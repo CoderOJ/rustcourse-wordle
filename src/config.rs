@@ -1,5 +1,6 @@
 use {
-	crate::{builtin_words, error::*, plate::*},
+	crate::{builtin_words, plate::*},
+	anyhow::{anyhow, Result},
 	clap::Parser,
 	std::{collections::HashSet, io::BufRead, str::from_utf8},
 };
@@ -76,15 +77,15 @@ pub struct Config {
 	pub list_final:     Vec<Word>,
 }
 
-pub fn config() -> Result<Config, ErrorAll> {
+pub fn config() -> Result<Config> {
 	let args = Args::parse();
 
 	let parse_builtin_list =
 		|list: &[&str]| list.iter().map(|&s| word_from_str(s).unwrap()).collect();
-	let read_list_src = |list_src| -> Result<Vec<Word>, ErrorAll> {
+	let read_list_src = |list_src| -> Result<Vec<Word>> {
 		std::io::BufReader::new(std::fs::File::open(list_src)?)
 			.split(b'\n')
-			.map(|r| -> Result<Word, ErrorAll> { Ok(word_from_str(from_utf8(&r?)?)?) })
+			.map(|r| -> Result<Word> { Ok(word_from_str(from_utf8(&r?)?)?) })
 			.collect()
 	};
 	let list_acceptable: Vec<Word> = match args.acceptable_set_src {
@@ -97,7 +98,7 @@ pub fn config() -> Result<Config, ErrorAll> {
 	};
 	let set_acceptable: HashSet<Word> = list_acceptable.into_iter().collect();
 	if !list_final.iter().all(|s| set_acceptable.contains(s)) {
-		return Err(Box::new(Error::Unknown));
+		return Err(anyhow!("list_fianl is not subset of list_acceptable"));
 	}
 
 	let word_src: WordSrc = match (args.word, args.random, args.seed, args.date) {

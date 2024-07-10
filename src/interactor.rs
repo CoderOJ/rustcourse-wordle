@@ -1,15 +1,16 @@
-use crate::{error::Error, plate::*, statistic::Statistic};
+use {
+	crate::{plate::*, statistic::Statistic},
+	anyhow::{Error, Result},
+};
 
 mod cmd;
 mod tty;
 pub use {cmd::Cmd, tty::Tty};
 
 pub trait Interactor {
-	fn read_word(&self) -> Result<Word, Error> {
+	fn read_word(&self) -> Result<Word> {
 		let mut buf = String::new();
-		std::io::stdin()
-			.read_line(&mut buf)
-			.map_err(|_| Error::Unknown)?;
+		std::io::stdin().read_line(&mut buf)?;
 		return word_from_str(buf.trim());
 	}
 	fn print_guess(&self, _: &Plate);

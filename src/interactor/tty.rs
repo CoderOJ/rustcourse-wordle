@@ -1,6 +1,7 @@
 use {
 	super::Interactor,
-	crate::{error::Error, plate::*, statistic::*},
+	crate::{plate::*, statistic::*},
+	anyhow::Error,
 	console::{style, StyledObject},
 };
 

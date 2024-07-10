@@ -1,20 +1,22 @@
 use {
-	rand::{self, SeedableRng}, std::collections::HashSet, wordle::{
+	anyhow::{anyhow, Error, Result},
+	rand::{self, SeedableRng},
+	std::collections::HashSet,
+	wordle::{
 		config::{self, WordSrc},
-		error::Error,
 		interactor::*,
 		plate::*,
 		statistic::Statistic,
 		util::loop_on_err_with,
-	}
+	},
 };
 
-struct RepeatReader<F: FnMut() -> Result<Word, Error>> {
+struct RepeatReader<F: FnMut() -> Result<Word>> {
 	first_time: bool,
 	reader:     F,
 }
 
-impl<F: FnMut() -> Result<Word, Error>> RepeatReader<F> {
+impl<F: FnMut() -> Result<Word>> RepeatReader<F> {
 	fn new(reader: F) -> Self {
 		Self {
 			first_time: true,
@@ -23,7 +25,7 @@ impl<F: FnMut() -> Result<Word, Error>> RepeatReader<F> {
 	}
 }
 
-impl<F: FnMut() -> Result<Word, Error>> Iterator for RepeatReader<F> {
+impl<F: FnMut() -> Result<Word>> Iterator for RepeatReader<F> {
 	type Item = Word;
 	fn next(&mut self) -> Option<Self::Item> {
 		let is_next = match self.first_time {
@@ -47,18 +49,18 @@ impl<F: FnMut() -> Result<Word, Error>> Iterator for RepeatReader<F> {
 fn reader_from_set<'a>(
 	list: &'a HashSet<Word>,
 	inter: &'a dyn Interactor,
-) -> impl 'a + FnMut() -> Result<Word, Error> {
+) -> impl 'a + FnMut() -> Result<Word> {
 	|| {
 		let word = inter.read_word()?;
 		return if list.iter().any(|s| word_eq(&word, s)) {
 			Ok(word)
 		} else {
-			Err(Error::Unknown)
+			Err(anyhow!("word {} out of range", word_to_str(&word)))
 		};
 	}
 }
 
-fn rand_words(list: &Vec<Word>, seed: u64, date: u32) -> impl FnMut() -> Result<Word, Error> {
+fn rand_words(list: &Vec<Word>, seed: u64, date: u32) -> impl FnMut() -> Result<Word> {
 	use rand::seq::SliceRandom;
 	let mut list = list.clone();
 	let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
@@ -67,7 +69,7 @@ fn rand_words(list: &Vec<Word>, seed: u64, date: u32) -> impl FnMut() -> Result<
 	return move || Ok(iter.next().unwrap());
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<()> {
 	let is_tty = atty::is(atty::Stream::Stdout);
 	let config = config::config()?;
 	let inter: &dyn Interactor = if is_tty { &Tty::new() } else { &Cmd::new() };

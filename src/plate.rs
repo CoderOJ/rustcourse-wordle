@@ -1,5 +1,6 @@
 use {
-	crate::{error::Error, util::LetterMap},
+	crate::util::LetterMap,
+	anyhow::{anyhow, Result},
 	LetterState::*,
 };
 
@@ -15,12 +16,12 @@ pub enum LetterState {
 pub type Word = [Letter; 5];
 pub type WordState = [LetterState; 5];
 
-pub fn word_from_str(s: &str) -> Result<Word, Error> {
+pub fn word_from_str(s: &str) -> Result<Word> {
 	s.to_ascii_uppercase()
 		.chars()
 		.collect::<Vec<char>>()
 		.try_into()
-		.map_err(|_| Error::Unknown)
+		.map_err(|_| anyhow!("invalid word: {:?}", s))
 }
 
 pub fn word_to_str(s: &Word) -> String {
@@ -101,7 +102,7 @@ impl Plate {
 		&self.keyboard
 	}
 
-	fn is_compatible(&self, word: &Word) -> Result<(), Error> {
+	fn is_compatible(&self, word: &Word) -> Result<()> {
 		for (prev_word, prev_state) in &self.history {
 			let mut word_cnt: LetterMap<u32> = Default::default();
 			for &c in word {
@@ -112,7 +113,11 @@ impl Plate {
 			for i in 0..5usize {
 				if prev_state[i] == Correct {
 					if word[i] != prev_word[i] {
-						return Err(Error::Unknown);
+						return Err(anyhow!(
+							"{} is not compatible with previous {}",
+							word_to_str(word),
+							word_to_str(prev_word)
+						));
 					}
 					word_cnt[word[i]] -= 1;
 				}
@@ -122,7 +127,11 @@ impl Plate {
 			for i in 0..5usize {
 				if prev_state[i] == Occured {
 					if word_cnt[prev_word[i]] == 0 {
-						return Err(Error::Unknown);
+						return Err(anyhow!(
+							"{} is not compatible with previous {}",
+							word_to_str(word),
+							word_to_str(prev_word)
+						));
 					}
 					word_cnt[prev_word[i]] -= 1;
 				}
@@ -132,7 +141,7 @@ impl Plate {
 		return Ok(());
 	}
 
-	pub fn guess(&mut self, word: &Word) -> Result<(), Error> {
+	pub fn guess(&mut self, word: &Word) -> Result<()> {
 		if self.difficult {
 			self.is_compatible(word)?;
 		}
