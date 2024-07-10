@@ -53,7 +53,7 @@ fn reader_from_set<'a>(
 		return if list.iter().any(|s| word_eq(&word, s)) {
 			Ok(word)
 		} else {
-			Err(Error::Unkown)
+			Err(Error::Unknown)
 		};
 	}
 }

@@ -9,7 +9,7 @@ pub trait Interactor {
 		let mut buf = String::new();
 		std::io::stdin()
 			.read_line(&mut buf)
-			.map_err(|_| Error::Unkown)?;
+			.map_err(|_| Error::Unknown)?;
 		return word_from_str(buf.trim());
 	}
 	fn print_guess(&self, _: &Plate);

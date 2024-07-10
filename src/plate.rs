@@ -20,7 +20,7 @@ pub fn word_from_str(s: &str) -> Result<Word, Error> {
 		.chars()
 		.collect::<Vec<char>>()
 		.try_into()
-		.map_err(|_| Error::Unkown)
+		.map_err(|_| Error::Unknown)
 }
 
 pub fn word_to_str(s: &Word) -> String {
@@ -112,7 +112,7 @@ impl Plate {
 			for i in 0..5usize {
 				if prev_state[i] == Correct {
 					if word[i] != prev_word[i] {
-						return Err(Error::Unkown);
+						return Err(Error::Unknown);
 					}
 					word_cnt[word[i]] -= 1;
 				}
@@ -122,7 +122,7 @@ impl Plate {
 			for i in 0..5usize {
 				if prev_state[i] == Occured {
 					if word_cnt[prev_word[i]] == 0 {
-						return Err(Error::Unkown);
+						return Err(Error::Unknown);
 					}
 					word_cnt[prev_word[i]] -= 1;
 				}

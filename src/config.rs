@@ -97,7 +97,7 @@ pub fn config() -> Result<Config, ErrorAll> {
 	};
 	let set_acceptable: HashSet<Word> = list_acceptable.into_iter().collect();
 	if !list_final.iter().all(|s| set_acceptable.contains(s)) {
-		return Err(Box::new(Error::Unkown));
+		return Err(Box::new(Error::Unknown));
 	}
 
 	let word_src: WordSrc = match (args.word, args.random, args.seed, args.date) {

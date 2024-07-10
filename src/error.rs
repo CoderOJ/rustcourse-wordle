@@ -1,7 +1,7 @@
 /// Various Erorr regarding wordle game
 #[derive(Debug)]
 pub enum Error {
-  Unkown,
+  Unknown,
 }
 
 impl std::fmt::Display for Error {
