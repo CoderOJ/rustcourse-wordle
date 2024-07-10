@@ -1,7 +1,7 @@
 use {
 	crate::{builtin_words, error::*, plate::*},
 	clap::Parser,
-	std::{io::BufRead, str::from_utf8},
+	std::{collections::HashSet, io::BufRead, str::from_utf8},
 };
 
 #[derive(Parser, Debug)]
@@ -68,11 +68,12 @@ pub enum WordSrc {
 }
 
 pub struct Config {
-	pub difficult:       bool,
-	pub stats:           bool,
-	pub word_src:        WordSrc,
-	pub list_acceptable: Vec<Word>,
-	pub list_final:      Vec<Word>,
+	pub difficult:      bool,
+	pub stats:          bool,
+	pub word_src:       WordSrc,
+	pub set_acceptable: HashSet<Word>,
+	pub set_final:      HashSet<Word>,
+	pub list_final:     Vec<Word>,
 }
 
 pub fn config() -> Result<Config, ErrorAll> {
@@ -94,10 +95,8 @@ pub fn config() -> Result<Config, ErrorAll> {
 		None => parse_builtin_list(builtin_words::FINAL),
 		Some(src) => read_list_src(src)?,
 	};
-	if list_final
-		.iter()
-		.any(|s| !list_acceptable.iter().any(|t| word_eq(s, t)))
-	{
+	let set_acceptable: HashSet<Word> = list_acceptable.into_iter().collect();
+	if !list_final.iter().all(|s| set_acceptable.contains(s)) {
 		return Err(Box::new(Error::Unkown));
 	}
 
@@ -112,7 +111,8 @@ pub fn config() -> Result<Config, ErrorAll> {
 		difficult: args.difficult,
 		stats: args.stats,
 		word_src,
-		list_acceptable,
+		set_acceptable,
+		set_final: list_final.iter().cloned().collect(),
 		list_final,
 	});
 }

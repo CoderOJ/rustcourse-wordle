@@ -1,13 +1,12 @@
 use {
-	rand::{self, SeedableRng},
-	wordle::{
+	rand::{self, SeedableRng}, std::collections::HashSet, wordle::{
 		config::{self, WordSrc},
 		error::Error,
 		interactor::*,
 		plate::*,
 		statistic::Statistic,
 		util::loop_on_err_with,
-	},
+	}
 };
 
 struct RepeatReader<F: FnMut() -> Result<Word, Error>> {
@@ -45,8 +44,8 @@ impl<F: FnMut() -> Result<Word, Error>> Iterator for RepeatReader<F> {
 	}
 }
 
-fn reader_from_list<'a>(
-	list: &'a Vec<Word>,
+fn reader_from_set<'a>(
+	list: &'a HashSet<Word>,
 	inter: &'a dyn Interactor,
 ) -> impl 'a + FnMut() -> Result<Word, Error> {
 	|| {
@@ -75,13 +74,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	let word_generator: &mut dyn Iterator<Item = Word> = match config.word_src {
 		WordSrc::Select(word) => &mut std::iter::repeat(word).take(1),
-		WordSrc::Ask => &mut RepeatReader::new(reader_from_list(&config.list_final, inter)),
+		WordSrc::Ask => &mut RepeatReader::new(reader_from_set(&config.set_final, inter)),
 		WordSrc::Random(seed, date) => {
 			&mut RepeatReader::new(rand_words(&config.list_final, seed, date))
 		}
 	};
 	let mut statistic = Statistic::new();
-	let mut read_acceptable = reader_from_list(&config.list_acceptable, inter);
+	let mut read_acceptable = reader_from_set(&config.set_acceptable, inter);
 
 	while let Some(word) = word_generator.next() {
 		let mut plate = Plate::new(&word, config.difficult);
