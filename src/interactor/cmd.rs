@@ -1,7 +1,7 @@
 use {
 	super::Interactor,
 	crate::{plate::*, statistic::*},
-	anyhow::{Error},
+	anyhow::Error,
 };
 
 pub struct Cmd;
