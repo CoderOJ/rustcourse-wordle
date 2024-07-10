@@ -15,3 +15,5 @@ impl std::error::Error for Error {
 		None
 	}
 }
+
+pub type ErrorAll = Box<dyn std::error::Error>;

@@ -1,6 +1,7 @@
 use {
-	crate::{builtin_words, error::Error, plate::*},
+	crate::{builtin_words, error::*, plate::*},
 	clap::Parser,
+	std::{io::BufRead, str::from_utf8},
 };
 
 #[derive(Parser, Debug)]
@@ -43,6 +44,18 @@ struct Args {
 	/// print statistic
 	#[arg(short = 't', long, default_value_t = false)]
 	stats: bool,
+
+	/// final word set
+	#[arg(short = 'f', long = "final-set", value_name = "FINAL_SET_FILE")]
+	final_set_src: Option<String>,
+
+	/// acceptable word set
+	#[arg(
+		short = 'a',
+		long = "acceptable-set",
+		value_name = "ACCEPTABLE_SET_FILE"
+	)]
+	acceptable_set_src: Option<String>,
 }
 
 pub enum WordSrc {
@@ -62,12 +75,31 @@ pub struct Config {
 	pub list_final:      Vec<Word>,
 }
 
-pub fn config() -> Result<Config, Error> {
+pub fn config() -> Result<Config, ErrorAll> {
 	let args = Args::parse();
 
-	let parse_list = |list: &[&str]| list.iter().map(|&s| word_from_str(s).unwrap()).collect();
-	let list_acceptable: Vec<Word> = parse_list(builtin_words::ACCEPTABLE);
-	let list_final: Vec<Word> = parse_list(builtin_words::FINAL);
+	let parse_builtin_list =
+		|list: &[&str]| list.iter().map(|&s| word_from_str(s).unwrap()).collect();
+	let read_list_src = |list_src| -> Result<Vec<Word>, ErrorAll> {
+		std::io::BufReader::new(std::fs::File::open(list_src)?)
+			.split(b'\n')
+			.map(|r| -> Result<Word, ErrorAll> { Ok(word_from_str(from_utf8(&r?)?)?) })
+			.collect()
+	};
+	let list_acceptable: Vec<Word> = match args.acceptable_set_src {
+		None => parse_builtin_list(builtin_words::ACCEPTABLE),
+		Some(src) => read_list_src(src)?,
+	};
+	let list_final: Vec<Word> = match args.final_set_src {
+		None => parse_builtin_list(builtin_words::FINAL),
+		Some(src) => read_list_src(src)?,
+	};
+	if list_final
+		.iter()
+		.any(|s| !list_acceptable.iter().any(|t| word_eq(s, t)))
+	{
+		return Err(Box::new(Error::Unkown));
+	}
 
 	let word_src: WordSrc = match (args.word, args.random, args.seed, args.date) {
 		(None, false, _, _) => WordSrc::Ask,
