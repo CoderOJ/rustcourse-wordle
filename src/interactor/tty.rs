@@ -2,7 +2,7 @@ use {
 	super::Interactor,
 	crate::{plate::*, statistic::*},
 	anyhow::Error,
-	console::{style, StyledObject},
+	console::{style, StyledObject, Term},
 };
 
 pub struct Tty;
@@ -33,7 +33,11 @@ where
 }
 
 impl Interactor for Tty {
+	fn new_round(&self) {
+		Term::stdout().clear_screen().unwrap();
+	}
 	fn print_guess(&self, plate: &Plate) {
+		Term::stdout().clear_screen().unwrap();
 		println!("---");
 		for &state in plate.history() {
 			println_iter(state.0.iter().zip(state.1.iter()).map(format_char));

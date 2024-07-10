@@ -13,6 +13,7 @@ pub trait Interactor {
 		std::io::stdin().read_line(&mut buf)?;
 		return word_from_str(buf.trim());
 	}
+	fn new_round(&self) {}
 	fn print_guess(&self, _: &Plate);
 	fn print_result(&self, _: &Plate);
 	fn print_statistic(&self, _: &Statistic);

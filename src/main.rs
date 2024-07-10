@@ -89,6 +89,7 @@ fn main() -> Result<()> {
 
 	while let Some(word) = word_generator.next() {
 		let mut plate = Plate::new(&word, config.difficult);
+		inter.new_round();
 		while !plate.is_win() && plate.count() < 6 {
 			loop_on_err_with(
 				|| {
