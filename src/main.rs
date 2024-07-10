@@ -1,19 +1,22 @@
-use wordle::{
-	config::{self, WordSrc},
-	error::Error,
-	interactor::*,
-	plate::*,
-	statistic::Statistic,
-	util::loop_on_err_with,
+use {
+	rand::{self, SeedableRng},
+	wordle::{
+		config::{self, WordSrc},
+		error::Error,
+		interactor::*,
+		plate::*,
+		statistic::Statistic,
+		util::loop_on_err_with,
+	},
 };
 
-struct RepeatReader<'a, F: FnMut() -> Result<Word, Error>> {
+struct RepeatReader<F: FnMut() -> Result<Word, Error>> {
 	first_time: bool,
-	reader:     &'a mut F,
+	reader:     F,
 }
 
-impl<'a, F: FnMut() -> Result<Word, Error>> RepeatReader<'a, F> {
-	fn new(reader: &'a mut F) -> Self {
+impl<F: FnMut() -> Result<Word, Error>> RepeatReader<F> {
+	fn new(reader: F) -> Self {
 		Self {
 			first_time: true,
 			reader,
@@ -21,7 +24,7 @@ impl<'a, F: FnMut() -> Result<Word, Error>> RepeatReader<'a, F> {
 	}
 }
 
-impl<'a, F: FnMut() -> Result<Word, Error>> Iterator for RepeatReader<'a, F> {
+impl<F: FnMut() -> Result<Word, Error>> Iterator for RepeatReader<F> {
 	type Item = Word;
 	fn next(&mut self) -> Option<Self::Item> {
 		let is_next = match self.first_time {
@@ -42,37 +45,43 @@ impl<'a, F: FnMut() -> Result<Word, Error>> Iterator for RepeatReader<'a, F> {
 	}
 }
 
+fn reader_from_list<'a>(
+	list: &'a Vec<Word>,
+	inter: &'a dyn Interactor,
+) -> impl 'a + FnMut() -> Result<Word, Error> {
+	|| {
+		let word = inter.read_word()?;
+		return if list.iter().any(|s| word_eq(&word, s)) {
+			Ok(word)
+		} else {
+			Err(Error::Unkown)
+		};
+	}
+}
+
+fn rand_words(list: &Vec<Word>, seed: u64, date: u32) -> impl FnMut() -> Result<Word, Error> {
+	use rand::seq::SliceRandom;
+	let mut list = list.clone();
+	let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
+	list.shuffle(&mut rng);
+	let mut iter = list.into_iter().skip((date - 1) as usize);
+	return move || Ok(iter.next().unwrap());
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let is_tty = atty::is(atty::Stream::Stdout);
 	let config = config::config()?;
-
 	let inter: &dyn Interactor = if is_tty { &Tty::new() } else { &Cmd::new() };
-
-	// `inter` must be passed because
-	// 1. functions can not capture it
-	// 2. specific lifetime for closures is still experimental
-	fn reader_from_list<'a>(
-		list: &'a Vec<Word>,
-		inter: &'a dyn Interactor,
-	) -> impl 'a + FnMut() -> Result<Word, Error> {
-		|| {
-			let word = inter.read_word()?;
-			return if list.iter().any(|s| word_eq(&word, s)) {
-				Ok(word)
-			} else {
-				Err(Error::Unkown)
-			};
-		}
-	}
-	let mut read_acceptable = reader_from_list(&config.list_acceptable, inter);
-	let mut read_final = reader_from_list(&config.list_final, inter);
 
 	let word_generator: &mut dyn Iterator<Item = Word> = match config.word_src {
 		WordSrc::Select(word) => &mut std::iter::repeat(word).take(1),
-		WordSrc::Ask => &mut RepeatReader::new(&mut read_final),
-		WordSrc::Random(seed, date) => todo!(),
+		WordSrc::Ask => &mut RepeatReader::new(reader_from_list(&config.list_final, inter)),
+		WordSrc::Random(seed, date) => {
+			&mut RepeatReader::new(rand_words(&config.list_final, seed, date))
+		}
 	};
 	let mut statistic = Statistic::new();
+	let mut read_acceptable = reader_from_list(&config.list_acceptable, inter);
 
 	while let Some(word) = word_generator.next() {
 		let mut plate = Plate::new(&word, config.difficult);

@@ -19,16 +19,20 @@ struct Args {
 		long,
 		default_value_t = 0,
 		value_name = "SEED",
-		requires = "random"
+		requires = "random",
+		// redundent for: clap seems to treat `-r`` as *provided* when `-w` presents
+		conflicts_with = "word",
 	)]
 	seed:   u64,
 	/// random date, requires -r
 	#[arg(
 		short,
-		long,
+		long = "day",
 		default_value_t = 1,
-		value_name = "DATE",
-		requires = "random"
+		value_name = "DAY",
+		requires = "random",
+		// redundent for: clap seems to treat `-r`` as *provided* when `-w` presents
+		conflicts_with = "word",
 	)]
 	date:   u32,
 
