@@ -47,12 +47,12 @@ impl<F: FnMut() -> Result<Word>> Iterator for RepeatReader<F> {
 }
 
 fn reader_from_set<'a>(
-	list: &'a HashSet<Word>,
+	set: &'a HashSet<Word>,
 	inter: &'a dyn Interactor,
 ) -> impl 'a + FnMut() -> Result<Word> {
 	|| {
 		let word = inter.read_word()?;
-		return if list.iter().any(|s| word_eq(&word, s)) {
+		return if set.contains(&word) {
 			Ok(word)
 		} else {
 			Err(anyhow!("word {} out of range", word_to_str(&word)))
