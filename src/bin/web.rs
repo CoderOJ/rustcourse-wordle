@@ -154,6 +154,20 @@ fn GameBoard(props: &GameBoardProps) -> Html {
 			return None;
 		})();
 	};
+	let statistic_clear = {
+		let update_flag = update_flag.clone();
+		let statistic = statistic.clone();
+		move |e: MouseEvent| {
+			e.prevent_default();
+			update_flag.set(*update_flag ^ 1);
+			*statistic.borrow_mut() = Default::default();
+			let _ = (|| -> Option<()> {
+				let storage = window()?.local_storage().ok()??;
+				let _ = storage.set_item("statistic", "");
+				return None;
+			})();
+		}
+	};
 
 	let send_word = Rc::new(Cell::new(Callback::from({
 		let update_flag = update_flag.clone();
@@ -214,8 +228,11 @@ fn GameBoard(props: &GameBoardProps) -> Html {
 						statistic.borrow().success_attempt_average())}
 				</div>
 				<div class="statistic-row">
-					{format!("Top words: {}", 
+					{format!("Top words: {}",
 						statistic.borrow().top5_words().map(|x| format!("{}*{}", x.str, x.cnt)).collect::<Vec<String>>().join(" "))}
+				</div>
+				<div class="statistic-row">
+					<a href="/" onclick={statistic_clear}> {"Clear statistic"} </a>
 				</div>
 			</div>
 		</div>
