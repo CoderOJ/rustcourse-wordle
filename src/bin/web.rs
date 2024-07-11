@@ -2,7 +2,10 @@ use {
 	anyhow::{anyhow, Result},
 	std::{cell::Cell, rc::Rc},
 	web_sys::{wasm_bindgen::JsValue, window, FormData, HtmlFormElement},
-	wordle::{builtin_words, config::*, plate::*, util::LetterMap, word_gen::rand_words},
+	wordle::{
+		builtin_words, config::*, plate::*, statistic::Statistic, util::LetterMap,
+		word_gen::rand_words,
+	},
 	yew::prelude::*,
 };
 
@@ -135,11 +138,28 @@ fn GameBoard(props: &GameBoardProps) -> Html {
 	};
 	let update_flag = use_state(|| 0);
 	let plate = use_mut_ref(|| Plate::new(goal, props.config.difficult));
+	let statistic = use_mut_ref(|| {
+		let result = (|| -> Option<Statistic> {
+			let storage = window()?.local_storage().ok()??;
+			let statistic_json = storage.get_item("statistic").ok()??;
+			Statistic::load_from_json(&statistic_json).ok()
+		})();
+		result.unwrap_or(Default::default())
+	});
+
+	let statistic_store = |statistic: &Statistic| {
+		let _ = (|| -> Option<()> {
+			let storage = window()?.local_storage().ok()??;
+			let _ = storage.set_item("statistic", &statistic.store_to_json());
+			return None;
+		})();
+	};
 
 	let send_word = Rc::new(Cell::new(Callback::from({
 		let update_flag = update_flag.clone();
 		let plate = plate.clone();
 		let set_acceptable = props.config.set_acceptable.clone();
+		let statistic = statistic.clone();
 		move |word: Word| {
 			if set_acceptable.contains(&word) {
 				update_flag.set(*update_flag ^ 1);
@@ -149,8 +169,12 @@ fn GameBoard(props: &GameBoardProps) -> Html {
 				}
 				// TODO: move alert to appropriate time
 				if plate.borrow().is_win() {
+					statistic.borrow_mut().add_plate(&plate.borrow());
+					statistic_store(&statistic.borrow());
 					alert("You win!");
 				} else if plate.borrow().history().len() == 6 {
+					statistic.borrow_mut().add_plate(&plate.borrow());
+					statistic_store(&statistic.borrow());
 					alert(&format!(
 						"You lose! Anwer is {}",
 						word_to_str(plate.borrow().goal())
@@ -181,6 +205,19 @@ fn GameBoard(props: &GameBoardProps) -> Html {
 			</div>
 			<hr />
 			<Keyboard keyboard={plate.borrow().keyboard().clone()} />
+			<hr />
+			<div class="statistic">
+				<div class="statistic-row">
+					{format!("Total win: {} Total lose: {}: Average attempts: {:.2}",
+						statistic.borrow().success_cnt(),
+						statistic.borrow().fail_cnt(),
+						statistic.borrow().success_attempt_average())}
+				</div>
+				<div class="statistic-row">
+					{format!("Top words: {}", 
+						statistic.borrow().top5_words().map(|x| format!("{}*{}", x.str, x.cnt)).collect::<Vec<String>>().join(" "))}
+				</div>
+			</div>
 		</div>
 	);
 }

@@ -24,7 +24,7 @@ fn main() -> Result<()> {
 	};
 	let mut statistic = match &config.state_src {
 		None => Statistic::new(),
-		Some(src) => Statistic::load(&std::path::Path::new(src))?,
+		Some(src) => Statistic::load_from_file(&std::path::Path::new(src))?,
 	};
 	let mut read_acceptable = reader_from_set(&config.set_acceptable, inter);
 
@@ -49,7 +49,7 @@ fn main() -> Result<()> {
 			inter.print_statistic(&statistic);
 		}
 		if let Some(path) = &config.state_src {
-			statistic.store(&std::path::Path::new(path))?;
+			statistic.store_to_file(&std::path::Path::new(path))?;
 		}
 	}
 

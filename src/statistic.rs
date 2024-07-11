@@ -59,11 +59,9 @@ impl Statistic {
 			games:              Default::default(),
 		}
 	}
-	pub fn load(path: &Path) -> Result<Self> {
-		if !path.exists() {
-			return Ok(Self::new());
-		}
-		let state: StatisticJSON = from_str(&std::fs::read_to_string(path)?)?;
+
+	pub fn load_from_json(json_str: &str) -> Result<Self> {
+		let state: StatisticJSON = from_str(json_str)?;
 		return match state.games {
 			None => Ok(Default::default()),
 			Some(games) => {
@@ -75,14 +73,22 @@ impl Statistic {
 			}
 		};
 	}
-	pub fn store(&self, path: &Path) -> Result<()> {
-		std::fs::write(
-			path,
-			&to_string(&StatisticJSON {
-				total_rounds: Some(self.success_cnt + self.fail_cnt),
-				games:        Some(self.games.clone()),
-			})?,
-		)?;
+	pub fn load_from_file(path: &Path) -> Result<Self> {
+		if !path.exists() {
+			return Ok(Self::new());
+		}
+		return Self::load_from_json(&std::fs::read_to_string(path)?);
+	}
+
+	pub fn store_to_json(&self) -> String {
+		to_string(&StatisticJSON {
+			total_rounds: Some(self.success_cnt + self.fail_cnt),
+			games:        Some(self.games.clone()),
+		})
+		.unwrap()
+	}
+	pub fn store_to_file(&self, path: &Path) -> Result<()> {
+		std::fs::write(path, &self.store_to_json())?;
 		return Ok(());
 	}
 
