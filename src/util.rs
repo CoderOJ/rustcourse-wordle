@@ -42,6 +42,8 @@ impl<T> LetterMap<T> {
 	}
 }
 
+/// repeatedly call a FnMut() -> Result<T> until returns Ok(_)
+/// call fe on each error
 pub fn loop_on_err_with<T, E, F: FnMut() -> Result<T, E>, FE: FnMut(E) -> ()>(
 	mut f: F,
 	mut fe: FE,
