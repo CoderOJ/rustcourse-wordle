@@ -5,6 +5,9 @@ use {
 	std::collections::HashSet,
 };
 
+/// RepeatReader implies Iterator trait for word reading
+/// It takes a FnMut as word getter (e.g. reader/rander)
+/// Wrap it with reading Y/N expect the first round
 pub struct RepeatReader<F: FnMut() -> Result<Word>> {
 	first_time: bool,
 	reader:     F,
@@ -54,6 +57,8 @@ pub fn reader_from_set<'a>(
 	}
 }
 
+/// iter-like rand word getter
+/// returns a FnMut, which returns next random word on each call
 pub fn rand_words(list: &Vec<Word>, seed: u64, date: u32) -> impl FnMut() -> Result<Word> {
 	use rand::seq::SliceRandom;
 	let mut list = list.clone();
