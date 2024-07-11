@@ -1,6 +1,6 @@
 use {
 	anyhow::{anyhow, Result},
-	std::{cell::Cell, rc::Rc},
+	std::{cell::Cell, collections::HashSet, rc::Rc},
 	web_sys::{wasm_bindgen::JsValue, window, FormData, HtmlFormElement},
 	wordle::{
 		builtin_words, config::*, plate::*, statistic::Statistic, util::LetterMap,
@@ -76,19 +76,33 @@ fn FormConfig(props: &FormConfigProps) -> Html {
 			WordSrc::Random(form.get("seed").as_string().ok_or(err)?.parse::<u64>()?, 1)
 		};
 
-		fn parse_builtin_list<T: FromIterator<Word>>(list: &[&str]) -> T {
-			list.iter().map(|&s| word_from_str(s).unwrap()).collect()
+		fn parse_list<T: FromIterator<Word>>(list: &str) -> Result<T> {
+			list.trim()
+				.split('\n')
+				.map(|str| word_from_str(str))
+				.collect()
 		}
+		let set_acceptable: HashSet<Word> = parse_list(&form.get("list_acceptable").as_string().unwrap())?;
+		let list_final: Vec<[char; 5]> = parse_list(&form.get("list_final").as_string().unwrap())?;
+		for word in &list_final {
+			if !set_acceptable.contains(word) {
+				return Err(anyhow!("word {} in final list, but not in acceptable list", word_to_str(word)));
+			}
+		}
+
 		return Ok(Config {
 			difficult: form.get("difficult") == JsValue::from_str("on"),
 			stats: true,
 			word_src,
-			set_acceptable: parse_builtin_list(builtin_words::ACCEPTABLE),
+			set_acceptable,
 			set_final: Default::default(),
-			list_final: parse_builtin_list(builtin_words::FINAL),
-			state_src: Some(format!("{:?}", form.get("seed"))),
+			list_final,
+			state_src: None,
 		});
 	});
+
+	let default_acceptable = builtin_words::ACCEPTABLE.join("\n");
+	let default_final = builtin_words::FINAL.join("\n");
 
 	return html!(
 		<form {onsubmit}>
@@ -113,6 +127,18 @@ fn FormConfig(props: &FormConfigProps) -> Html {
 			<div class="config-row">
 			<label> {"Random seed: "} </label>
 			<input type="number" name="seed" value="0"/>
+			</div>
+
+			<div class="config-row">
+			<label> {"Acceptable list: "} </label>
+			<br />
+			<textarea name="list_acceptable" value={default_acceptable}/>
+			</div>
+
+			<div class="config-row">
+			<label> {"Final list: "} </label>
+			<br />
+			<textarea name="list_final" value={default_final}/>
 			</div>
 
 			<div class="config-row">
