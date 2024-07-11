@@ -1,0 +1,7 @@
+input, select {
+  border-style: solid;
+}
+
+.config-row {
+  margin: 10px;
+}

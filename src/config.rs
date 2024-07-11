@@ -35,7 +35,7 @@ struct Args {
 
 	/// final word set
 	#[arg(short = 'f', long = "final-set", value_name = "FINAL_SET_FILE")]
-	#[serde(rename = "final_set")] 
+	#[serde(rename = "final_set")]
 	final_set_src: Option<String>,
 
 	/// acceptable word set
@@ -44,20 +44,21 @@ struct Args {
 		long = "acceptable-set",
 		value_name = "ACCEPTABLE_SET_FILE"
 	)]
-	#[serde(rename = "acceptable_set")] 
+	#[serde(rename = "acceptable_set")]
 	acceptable_set_src: Option<String>,
 
 	/// state json file
 	#[arg(short = 'S', long = "state", value_name = "STATE_FILE")]
-	#[serde(rename = "state")] 
+	#[serde(rename = "state")]
 	state_src: Option<String>,
 
 	/// default config file
 	#[arg(short, long = "config", value_name = "CONFIG_FILE")]
-	#[serde(rename = "config")] 
+	#[serde(rename = "config")]
 	config_src: Option<String>,
 }
 
+#[derive(Debug)]
 pub enum WordSrc {
 	/// ask on each round
 	Ask,
@@ -67,6 +68,7 @@ pub enum WordSrc {
 	Random(u64, u32),
 }
 
+#[derive(Debug)]
 pub struct Config {
 	pub difficult:      bool,
 	pub stats:          bool,
