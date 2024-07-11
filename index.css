@@ -36,3 +36,7 @@ select {
   background-color: #d3d6da;
   color: black;
 }
+
+#focus-me {
+  opacity: 0;
+}

@@ -1,9 +1,17 @@
 use {
 	anyhow::{anyhow, Result},
+	std::{cell::Cell, rc::Rc},
 	web_sys::{wasm_bindgen::JsValue, window, FormData, HtmlFormElement},
 	wordle::{builtin_words, config::*, plate::*, word_gen::rand_words},
 	yew::prelude::*,
 };
+
+fn alert(msg: &str) {
+	(|| -> Option<()> {
+		window()?.alert_with_message(msg).ok()?;
+		None
+	})();
+}
 
 enum WordleMsg {
 	SetConfig(Result<Config>),
@@ -26,10 +34,7 @@ impl Component for Wordle {
 		match msg {
 			WordleMsg::SetConfig(config) => match config {
 				Ok(config) => self.config = Some(config),
-				Err(err) => window()
-					.unwrap()
-					.alert_with_message(&err.to_string())
-					.unwrap(),
+				Err(err) => alert(&err.to_string()),
 			},
 		}
 		return true;
@@ -68,13 +73,14 @@ fn FormConfig(props: &FormConfigProps) -> Html {
 			WordSrc::Random(form.get("seed").as_string().ok_or(err)?.parse::<u64>()?, 1)
 		};
 
-		let parse_builtin_list =
-			|list: &[&str]| list.iter().map(|&s| word_from_str(s).unwrap()).collect();
+		fn parse_builtin_list<T: FromIterator<Word>>(list: &[&str]) -> T {
+			list.iter().map(|&s| word_from_str(s).unwrap()).collect()
+		}
 		return Ok(Config {
 			difficult: form.get("difficult") == JsValue::from_str("on"),
 			stats: true,
 			word_src,
-			set_acceptable: Default::default(),
+			set_acceptable: parse_builtin_list(builtin_words::ACCEPTABLE),
 			set_final: Default::default(),
 			list_final: parse_builtin_list(builtin_words::FINAL),
 			state_src: Some(format!("{:?}", form.get("seed"))),
@@ -127,21 +133,48 @@ fn GameBoard(props: &GameBoardProps) -> Html {
 		}
 		_ => unreachable!(),
 	};
-	let mut plate = Plate::new(goal, props.config.difficult);
-	plate.guess(&word_from_str("abuse").unwrap()).unwrap();
+	let update_flag = use_state(|| 0);
+	let plate = use_mut_ref(|| Plate::new(goal, props.config.difficult));
 
-	let children: Vec<Html> = (0..6usize)
-		.into_iter()
-		.map(|id| {
-			if id < plate.history().len() {
-				html!( <WordColor ws={plate.history()[id]} />)
+	let send_word = Rc::new(Cell::new(Callback::from({
+		let update_flag = update_flag.clone();
+		let plate = plate.clone();
+		let set_acceptable = props.config.set_acceptable.clone();
+		move |word: Word| {
+			if set_acceptable.contains(&word) {
+				update_flag.set(*update_flag ^ 1);
+				let res = plate.borrow_mut().guess(&word);
+				if let Err(err) = res {
+					alert(&err.to_string());
+				}
+				// TODO: move alert to appropriate time
+				if plate.borrow().is_win() {
+					alert("You win!");
+				} else if plate.borrow().history().len() == 6 {
+					alert(&format!("You lose! Anwer is {}", word_to_str(plate.borrow().goal())));
+				}
 			} else {
-				html!( <WordBlank /> )
+				alert(&format!("{} is not in acceptable list", word_to_str(&word)));
 			}
-		})
-		.collect();
+		}
+	})));
+
 	return html!(
-		<div> { children } </div>
+		<div>
+		{
+			(0..6usize).into_iter()
+				.map(|id| {
+					if id < plate.borrow().history().len() {
+						html!( <WordColor ws={plate.borrow().history()[id]} />)
+					} else if id == plate.borrow().history().len() && !plate.borrow().is_win() {
+						html!( <WordInput send_word={send_word.take()} /> )
+					} else {
+						html!( <WordBlank /> )
+					}
+				})
+			.collect::<Html>()
+		}
+		</div>
 	);
 }
 
@@ -160,6 +193,53 @@ fn WordColor(props: &WordColorProps) -> Html {
 		.map(|(c, s)| html!(<LetterColor c={*c} s={*s} />))
 		.collect();
 	return html!( <div> { children } </div> );
+}
+
+#[derive(PartialEq, Properties)]
+struct WordInputProps {
+	send_word: Callback<Word>,
+}
+
+#[function_component]
+fn WordInput(props: &WordInputProps) -> Html {
+	let update_flag = use_state(|| 0);
+	let letters = use_mut_ref(|| -> Vec<Letter> { Default::default() });
+
+	let children: Vec<Html> = (0..5usize)
+		.map(|id| {
+			if id < letters.borrow().len() {
+				html!(<LetterColor c={letters.borrow()[id]} s={LetterState::Unknown} />)
+			} else {
+				html!(<LetterColor c={' '} s={LetterState::Unknown} />)
+			}
+		})
+		.collect();
+
+	let onkeydown = {
+		let update_flag = update_flag.clone();
+		let letters = letters.clone();
+		let send_word = props.send_word.clone();
+		Callback::from(move |e: KeyboardEvent| {
+			let code = e.key_code();
+			if 65 <= code && code <= 90 {
+				let c = code as u8 as char;
+				if letters.borrow().len() < 5 {
+					update_flag.set(*update_flag ^ 1);
+					letters.borrow_mut().push(c);
+				}
+			} else if code == 8 {
+				update_flag.set(*update_flag ^ 1);
+				letters.borrow_mut().pop();
+			} else if code == 13 {
+				if letters.borrow().len() == 5 {
+					let word: Word = letters.borrow().clone().try_into().unwrap();
+					send_word.emit(word);
+				}
+			}
+		})
+	};
+
+	return html!( <div> { children } <input {onkeydown} id={"focus-me"}/> </div> );
 }
 
 #[function_component]
