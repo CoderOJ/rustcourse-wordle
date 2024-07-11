@@ -2,7 +2,7 @@ use {
 	anyhow::{anyhow, Result},
 	std::{cell::Cell, rc::Rc},
 	web_sys::{wasm_bindgen::JsValue, window, FormData, HtmlFormElement},
-	wordle::{builtin_words, config::*, plate::*, word_gen::rand_words},
+	wordle::{builtin_words, config::*, plate::*, util::LetterMap, word_gen::rand_words},
 	yew::prelude::*,
 };
 
@@ -151,7 +151,10 @@ fn GameBoard(props: &GameBoardProps) -> Html {
 				if plate.borrow().is_win() {
 					alert("You win!");
 				} else if plate.borrow().history().len() == 6 {
-					alert(&format!("You lose! Anwer is {}", word_to_str(plate.borrow().goal())));
+					alert(&format!(
+						"You lose! Anwer is {}",
+						word_to_str(plate.borrow().goal())
+					));
 				}
 			} else {
 				alert(&format!("{} is not in acceptable list", word_to_str(&word)));
@@ -160,22 +163,47 @@ fn GameBoard(props: &GameBoardProps) -> Html {
 	})));
 
 	return html!(
-		<div>
-		{
-			(0..6usize).into_iter()
-				.map(|id| {
-					if id < plate.borrow().history().len() {
-						html!( <WordColor ws={plate.borrow().history()[id]} />)
-					} else if id == plate.borrow().history().len() && !plate.borrow().is_win() {
-						html!( <WordInput send_word={send_word.take()} /> )
-					} else {
-						html!( <WordBlank /> )
-					}
-				})
-			.collect::<Html>()
-		}
+		<div class="app">
+			<div class="plate">
+			{
+				(0..6usize).into_iter()
+					.map(|id| {
+						if id < plate.borrow().history().len() {
+							html!( <WordColor ws={plate.borrow().history()[id]} />)
+						} else if id == plate.borrow().history().len() && !plate.borrow().is_win() {
+							html!( <WordInput send_word={send_word.take()} /> )
+						} else {
+							html!( <WordBlank /> )
+						}
+					})
+				.collect::<Html>()
+			}
+			</div>
+			<hr />
+			<Keyboard keyboard={plate.borrow().keyboard().clone()} />
 		</div>
 	);
+}
+
+#[derive(PartialEq, Properties)]
+struct KeyboardProps {
+	keyboard: LetterMap<LetterState>,
+}
+
+#[function_component]
+fn Keyboard(props: &KeyboardProps) -> Html {
+	let get_row = |s: &str| {
+		s.chars()
+			.map(|c| html!(<LetterColor {c} s={props.keyboard[c]} />))
+			.collect::<Html>()
+	};
+	html!(
+		<div class="keyboard">
+			<div class="keyboard-row"> {get_row("QWERTYUIOP")} </div>
+			<div class="keyboard-row"> {get_row("ASDFGHJKL")} </div>
+			<div class="keyboard-row"> {get_row("ZXCVBNM")} </div>
+		</div>
+	)
 }
 
 #[derive(PartialEq, Properties)]
@@ -192,7 +220,7 @@ fn WordColor(props: &WordColorProps) -> Html {
 		.zip(props.ws.1.iter())
 		.map(|(c, s)| html!(<LetterColor c={*c} s={*s} />))
 		.collect();
-	return html!( <div> { children } </div> );
+	return html!( <div class="plate-row"> { children } </div> );
 }
 
 #[derive(PartialEq, Properties)]
@@ -239,7 +267,7 @@ fn WordInput(props: &WordInputProps) -> Html {
 		})
 	};
 
-	return html!( <div> { children } <input {onkeydown} id={"focus-me"}/> </div> );
+	return html!( <div class="plate-row"> { children } <input {onkeydown} id={"focus-me"}/> </div> );
 }
 
 #[function_component]
@@ -247,7 +275,7 @@ fn WordBlank() -> Html {
 	let children: Vec<Html> = (0..5usize)
 		.map(|_| html!(<LetterColor c={' '} s={LetterState::Unknown} />))
 		.collect();
-	return html!( <div> { children } </div> );
+	return html!( <div class="plate-row"> { children } </div> );
 }
 
 #[derive(PartialEq, Properties)]

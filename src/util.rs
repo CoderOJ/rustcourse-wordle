@@ -4,7 +4,7 @@ use {
 };
 
 /// Specialized map for 26 letters
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub struct LetterMap<T> {
 	_data: [T; 26],
 }
