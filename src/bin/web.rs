@@ -165,7 +165,7 @@ fn WordColor(props: &WordColorProps) -> Html {
 #[function_component]
 fn WordBlank() -> Html {
 	let children: Vec<Html> = (0..5usize)
-		.map(|_| html!(<LetterColor c={' '} s={LetterState::Unkown} />))
+		.map(|_| html!(<LetterColor c={' '} s={LetterState::Unknown} />))
 		.collect();
 	return html!( <div> { children } </div> );
 }
@@ -188,7 +188,7 @@ fn LetterColor(props: &LetterColorProps) -> Html {
 		LetterState::Redundant => {
 			html!(<div class="letterbox letterbox-redundant"> {props.c.to_string()} </div>)
 		}
-		LetterState::Unkown => {
+		LetterState::Unknown => {
 			html!(<div class="letterbox letterbox-unknown">    {props.c.to_string()} </div>)
 		}
 	}

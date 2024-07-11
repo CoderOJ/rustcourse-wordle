@@ -18,7 +18,7 @@ fn format_char(cs: (&Letter, &LetterState)) -> StyledObject<char> {
 		(&c, LetterState::Correct) => style(c).green(),
 		(&c, LetterState::Occured) => style(c).yellow(),
 		(&c, LetterState::Redundant) => style(c).red(),
-		(&c, LetterState::Unkown) => style(c),
+		(&c, LetterState::Unknown) => style(c),
 	}
 }
 

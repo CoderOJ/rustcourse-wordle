@@ -17,7 +17,7 @@ fn state_to_char(state: &LetterState) -> char {
 		LetterState::Correct => 'G',
 		LetterState::Occured => 'Y',
 		LetterState::Redundant => 'R',
-		LetterState::Unkown => 'X',
+		LetterState::Unknown => 'X',
 	}
 }
 

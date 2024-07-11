@@ -10,7 +10,7 @@ pub enum LetterState {
 	Correct,
 	Occured,
 	Redundant,
-	Unkown,
+	Unknown,
 }
 
 pub type Word = [Letter; 5];
@@ -43,7 +43,7 @@ pub struct Plate {
 
 impl Default for LetterState {
 	fn default() -> Self {
-		Self::Unkown
+		Self::Unknown
 	}
 }
 
@@ -56,7 +56,7 @@ impl LetterState {
 			(_, Occured) => Occured,
 			(Redundant, _) => Redundant,
 			(_, Redundant) => Redundant,
-			(Unkown, Unkown) => Unkown,
+			(Unknown, Unknown) => Unknown,
 		}
 	}
 }
