@@ -1,7 +1,7 @@
 use {
 	anyhow::{anyhow, Result},
 	web_sys::{wasm_bindgen::JsValue, window, FormData, HtmlFormElement},
-	wordle::{config::*, plate::word_from_str},
+	wordle::{builtin_words, config::*, plate::*, word_gen::rand_words},
 	yew::prelude::*,
 };
 
@@ -41,7 +41,7 @@ impl Component for Wordle {
 
 		return match &self.config {
 			None => html!(<FormConfig {set_config} />),
-			Some(config) => html!(<div> { format!("start game with config: {:?}", config) } </div>),
+			Some(config) => html!(<GameBoard config={config.clone()} />),
 		};
 	}
 }
@@ -68,13 +68,15 @@ fn FormConfig(props: &FormConfigProps) -> Html {
 			WordSrc::Random(form.get("seed").as_string().ok_or(err)?.parse::<u64>()?, 1)
 		};
 
+		let parse_builtin_list =
+			|list: &[&str]| list.iter().map(|&s| word_from_str(s).unwrap()).collect();
 		return Ok(Config {
 			difficult: form.get("difficult") == JsValue::from_str("on"),
 			stats: true,
 			word_src,
 			set_acceptable: Default::default(),
 			set_final: Default::default(),
-			list_final: Default::default(),
+			list_final: parse_builtin_list(builtin_words::FINAL),
 			state_src: Some(format!("{:?}", form.get("seed"))),
 		});
 	});
@@ -100,8 +102,8 @@ fn FormConfig(props: &FormConfigProps) -> Html {
 			</div>
 
 			<div class="config-row">
-			<label> {"Random seed (default 0): "} </label>
-			<input type="number" name="seed" />
+			<label> {"Random seed: "} </label>
+			<input type="number" name="seed" value="0"/>
 			</div>
 
 			<div class="config-row">
@@ -109,6 +111,87 @@ fn FormConfig(props: &FormConfigProps) -> Html {
 			</div>
 		</form>
 	);
+}
+
+#[derive(PartialEq, Properties)]
+struct GameBoardProps {
+	config: Config,
+}
+
+#[function_component]
+fn GameBoard(props: &GameBoardProps) -> Html {
+	let goal = match &props.config.word_src {
+		WordSrc::Select(word) => word,
+		WordSrc::Random(seed, date) => {
+			&rand_words(&props.config.list_final, *seed, *date)().unwrap()
+		}
+		_ => unreachable!(),
+	};
+	let mut plate = Plate::new(goal, props.config.difficult);
+	plate.guess(&word_from_str("abuse").unwrap()).unwrap();
+
+	let children: Vec<Html> = (0..6usize)
+		.into_iter()
+		.map(|id| {
+			if id < plate.history().len() {
+				html!( <WordColor ws={plate.history()[id]} />)
+			} else {
+				html!( <WordBlank /> )
+			}
+		})
+		.collect();
+	return html!(
+		<div> { children } </div>
+	);
+}
+
+#[derive(PartialEq, Properties)]
+struct WordColorProps {
+	ws: (Word, WordState),
+}
+
+#[function_component]
+fn WordColor(props: &WordColorProps) -> Html {
+	let children: Vec<Html> = props
+		.ws
+		.0
+		.iter()
+		.zip(props.ws.1.iter())
+		.map(|(c, s)| html!(<LetterColor c={*c} s={*s} />))
+		.collect();
+	return html!( <div> { children } </div> );
+}
+
+#[function_component]
+fn WordBlank() -> Html {
+	let children: Vec<Html> = (0..5usize)
+		.map(|_| html!(<LetterColor c={' '} s={LetterState::Unkown} />))
+		.collect();
+	return html!( <div> { children } </div> );
+}
+
+#[derive(PartialEq, Properties)]
+struct LetterColorProps {
+	c: Letter,
+	s: LetterState,
+}
+
+#[function_component]
+fn LetterColor(props: &LetterColorProps) -> Html {
+	match props.s {
+		LetterState::Correct => {
+			html!(<div class="letterbox letterbox-correct">   {props.c.to_string()} </div>)
+		}
+		LetterState::Occured => {
+			html!(<div class="letterbox letterbox-occured">   {props.c.to_string()} </div>)
+		}
+		LetterState::Redundant => {
+			html!(<div class="letterbox letterbox-redundant"> {props.c.to_string()} </div>)
+		}
+		LetterState::Unkown => {
+			html!(<div class="letterbox letterbox-unknown">    {props.c.to_string()} </div>)
+		}
+	}
 }
 
 fn main() {

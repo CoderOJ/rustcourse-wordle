@@ -58,7 +58,7 @@ struct Args {
 	config_src: Option<String>,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum WordSrc {
 	/// ask on each round
 	Ask,
@@ -68,7 +68,7 @@ pub enum WordSrc {
 	Random(u64, u32),
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Config {
 	pub difficult:      bool,
 	pub stats:          bool,

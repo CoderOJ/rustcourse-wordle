@@ -5,7 +5,7 @@ use {
 };
 
 pub type Letter = char;
-#[derive(PartialEq, Eq, Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub enum LetterState {
 	Correct,
 	Occured,

@@ -60,5 +60,5 @@ pub fn rand_words(list: &Vec<Word>, seed: u64, date: u32) -> impl FnMut() -> Res
 	let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
 	list.shuffle(&mut rng);
 	let mut iter = list.into_iter().skip((date - 1) as usize);
-	return move || Ok(iter.next().unwrap());
+	return move || iter.next().ok_or(anyhow!("End of random list"));
 }
