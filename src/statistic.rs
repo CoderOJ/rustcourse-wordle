@@ -151,6 +151,8 @@ impl Statistic {
 			guesses: history,
 		});
 	}
+	
+	/// update statistic by a WHOLE plate
 	pub fn add_plate(&mut self, plate: &Plate) {
 		self._add_plate(
 			word_to_str(plate.goal()),
